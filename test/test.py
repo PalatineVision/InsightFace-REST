@@ -36,7 +36,9 @@ def start_container(det, rec):
     subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec}'), cwd=START_SCRIPT_PATH)
     for i in range(10):
         try:
-            requests.get(f'{INSIGHT_FACE}/info')
+            r = requests.get(f'{INSIGHT_FACE}/info')
+            r.raise_for_status()
+            print(r.json())
             print('Connected')
             return True
         except Exception as e:
@@ -54,7 +56,7 @@ for det in DET_MODEL:
     for rec in REC_MODEL:
         
         if all([f'{det} {rec} {t}' in result for t in TYPE_TEST]) and \
-                any([result[f'{det} {rec} {t}'] == "Fail to start container" 
+                all([result[f'{det} {rec} {t}'] != "Fail to start container" 
                         for t in TYPE_TEST]):
             continue
 
@@ -75,7 +77,7 @@ for det in DET_MODEL:
             result[f'{det} {rec} {t}'] = Benchmark(images_dir=t).start()
             json.dump(result, open('benchmarks.json', 'w'), indent=4)
         
-        time.sleep(DEBUG_LAG)
+        # time.sleep(DEBUG_LAG)
 
 
 print(json.dumps(result, indent=4))
