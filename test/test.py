@@ -1,4 +1,6 @@
+import argparse
 import json
+import sys
 import time
 import requests
 from benchmark import Benchmark
@@ -29,11 +31,18 @@ REC_MODEL = [
 'glintr100',
 ]
 START_SCRIPT_PATH = '/home/ichernoglazov/InsightFace-REST'
-INSIGHT_FACE = 'http://localhost:18082'
+INSIGHT_FACE = 'http://localhost:18081'
 DEBUG_LAG=120
 
-def start_container(det, rec):
-    subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec}'), cwd=START_SCRIPT_PATH)
+def start_container(det, rec, cpu=True, gpu=None):
+    if cpu:
+        subprocess.run(args=shlex.split(f'bash ./deploy_cpu.sh {det} {rec}'), cwd=START_SCRIPT_PATH)
+    else:
+        if gpu is None:
+            subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec}'), cwd=START_SCRIPT_PATH)
+        else:
+            subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec} {gpu}'), cwd=START_SCRIPT_PATH)
+    
     for i in range(10):
         try:
             r = requests.get(f'{INSIGHT_FACE}/info')
@@ -47,35 +56,55 @@ def start_container(det, rec):
             time.sleep(5)
     return False
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--gpu', type=int, choices=[-1, 0, 1], default=-1)
+parser.add_argument('--save-file', type=str, required=True)
+parser.add_argument('--test-types', type=str, nargs='+', choices=TYPE_TEST, default=TYPE_TEST)
+parser.add_argument('--det-models', type=str, nargs='+', choices=DET_MODEL, default=DET_MODEL)
+parser.add_argument('--rec-models', type=str, nargs='+', choices=REC_MODEL, default=REC_MODEL)
+args = parser.parse_args()
+if args.gpu == -1:
+    cpu = True
+    gpu = None
+    key_template = '{} {} {} cpu'
+else:
+    cpu = False
+    gpu = args.gpu
+    key_template = '{} {} {}'
+test_types = set(args.test_types)
+det_models = set(args.det_models)
+rec_models = set(args.rec_models)
 try:
-    result = json.load(open('benchmarks.json', 'rb'))
+    result = json.load(open(args.save_file, 'rb'))
 except:
     result = {}
 
-for det in DET_MODEL:
-    for rec in REC_MODEL:
+for det in det_models:
+    for rec in rec_models:
         
-        if all([f'{det} {rec} {t}' in result for t in TYPE_TEST]) and \
-                all([result[f'{det} {rec} {t}'] != "Fail to start container" 
-                        for t in TYPE_TEST]):
+        if all([ key_template.format(det, rec, t) in result for t in test_types]) and \
+                all([result[key_template.format(det, rec, t)] != "Fail to start container" 
+                        for t in test_types]):
             continue
 
-        if not start_container(det, rec):
-            for t in TYPE_TEST:
-                if not f'{det} {rec} {t}' in result:
-                    result[f'{det} {rec} {t}'] = 'Fail to start container'
-            json.dump(result, open('benchmarks.json', 'w'), indent=4)
+        if not start_container(det, rec, cpu, gpu):
+            key = key_template.format(det, rec, t)
+            for t in test_types:
+                if not key in result:
+                    result[key] = 'Fail to start container'
+            json.dump(result, open(args.save_file, 'w'), indent=4)
             continue
 
-        for t in TYPE_TEST:
-            if f'{det} {rec} {t}' in result: 
-                r = result[f'{det} {rec} {t}']
+        for t in test_types:
+            key = key_template.format(det, rec, t)
+            if key in result: 
+                r = result[key]
                 if r != 'Fail to start container':
                     continue
-                print(f'{det} {rec} {t} result: {r}')
-            print(f"Benchmark {det} {rec} {t}")
-            result[f'{det} {rec} {t}'] = Benchmark(images_dir=t).start()
-            json.dump(result, open('benchmarks.json', 'w'), indent=4)
+                print(f'{key} result: {r}')
+            print(f"Benchmark {key}")
+            result[key] = Benchmark(images_dir=t).start()
+            json.dump(result, open(args.save_file, 'w'), indent=4)
         
         # time.sleep(DEBUG_LAG)
 

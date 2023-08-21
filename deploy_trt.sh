@@ -40,14 +40,14 @@ force_fp16=False
 ## scrfd_500m_gnkps, scrfd_2.5g_gnkps, scrfd_10g_gnkps
 ## yolov5l-face, yolov5m-face, yolov5s-face, yolov5n-face, yolov5n-0.5
 ## Note: SCRFD family models requires input image shape dividable by 32, i.e 640x640, 1024x768.
-det_model=scrfd_10g_gnkps
+det_model=${1:-scrfd_10g_gnkps}
 
 ## Maximum batch size for detection model
 det_batch_size=1
 
 # REC MODELS:
 ## None, arcface_r100_v1, glintr100, w600k_r50, w600k_mbf
-rec_model=glintr100
+rec_model=${2:-glintr100}
 
 ## Maximum batch size for recognition model (this value also applies for GA and mask detection models)
 rec_batch_size=1
@@ -69,7 +69,7 @@ triton_uri='localhost:8001'
 # request body.
 
 ## Return base64 encoded face crops.
-return_face_data=False
+return_face_data=True
 ## Get faces embeddings. Otherwise only bounding boxes will be returned.
 extract_embeddings=True
 ## Estimate gender/age
@@ -90,46 +90,41 @@ echo "Starting $((n_gpu * n_workers)) workers on $n_gpu GPUs ($n_workers workers
 echo "Containers port range: $START_PORT - $(($START_PORT + ($n_gpu) - 1))"
 
 
-p=0
+device='"device='${3:-0}'"';
+port=$START_PORT;
+name=$IMAGE-gpu$i-trt;
 
-for i in $(seq 0 $(($n_gpu - 1)) ); do
-    device='"device='$i'"';
-    port=$((START_PORT + $p));
-    name=$IMAGE-gpu$i-trt;
-
-    docker rm -f $name;
-    echo --- Starting container $name  with $device  at port $port;
-    ((p++));
-    docker run  -p $port:18080\
-        --gpus $device\
-        -d\
-        -e LOG_LEVEL=$log_level\
-        -e USE_NVJPEG=False\
-        -e PYTHONUNBUFFERED=0\
-        -e PORT=18080\
-        -e NUM_WORKERS=$n_workers\
-        -e INFERENCE_BACKEND=trt\
-        -e FORCE_FP16=$force_fp16\
-        -e DET_NAME=$det_model\
-        -e DET_THRESH=$det_thresh\
-        -e REC_NAME=$rec_model\
-        -e MASK_DETECTOR=$mask_detector\
-        -e REC_BATCH_SIZE=$rec_batch_size\
-        -e DET_BATCH_SIZE=$det_batch_size\
-        -e GA_NAME=$ga_model\
-        -e TRITON_URI=$triton_uri\
-        -e KEEP_ALL=True\
-        -e MAX_SIZE=$max_size\
-        -e DEF_RETURN_FACE_DATA=$return_face_data\
-        -e DEF_EXTRACT_EMBEDDING=$extract_embeddings\
-        -e DEF_EXTRACT_GA=$detect_ga\
-        -v $PWD/models:/models\
-        -v $PWD/src/api_trt:/app\
-        --health-cmd='curl -f http://localhost:18080/info || exit 1'\
-        --health-interval=1m\
-        --health-timeout=10s\
-        --health-retries=3\
-        --name=$name\
-        $IMAGE:$TAG
-done
+docker rm -f $name;
+echo --- Starting container $name  with $device  at port $port;
+docker run  -p $port:18080\
+	--gpus $device\
+	-d\
+	-e LOG_LEVEL=$log_level\
+	-e USE_NVJPEG=False\
+	-e PYTHONUNBUFFERED=0\
+	-e PORT=18080\
+	-e NUM_WORKERS=$n_workers\
+	-e INFERENCE_BACKEND=trt\
+	-e FORCE_FP16=$force_fp16\
+	-e DET_NAME=$det_model\
+	-e DET_THRESH=$det_thresh\
+	-e REC_NAME=$rec_model\
+	-e MASK_DETECTOR=$mask_detector\
+	-e REC_BATCH_SIZE=$rec_batch_size\
+	-e DET_BATCH_SIZE=$det_batch_size\
+	-e GA_NAME=$ga_model\
+	-e TRITON_URI=$triton_uri\
+	-e KEEP_ALL=True\
+	-e MAX_SIZE=$max_size\
+	-e DEF_RETURN_FACE_DATA=$return_face_data\
+	-e DEF_EXTRACT_EMBEDDING=$extract_embeddings\
+	-e DEF_EXTRACT_GA=$detect_ga\
+	-v $PWD/models:/models\
+	-v $PWD/src/api_trt:/app\
+	--health-cmd='curl -f http://localhost:18080/info || exit 1'\
+	--health-interval=1m\
+	--health-timeout=10s\
+	--health-retries=3\
+	--name=$name\
+	$IMAGE:$TAG
 

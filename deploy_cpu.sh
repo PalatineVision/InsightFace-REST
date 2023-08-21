@@ -32,14 +32,14 @@ max_size=640,640
 ## scrfd_500m_gnkps, scrfd_2.5g_gnkps, scrfd_10g_gnkps
 ## yolov5l-face, yolov5m-face, yolov5s-face, yolov5n-face, yolov5n-0.5
 ## Note: SCRFD family models requires input image shape dividable by 32, i.e 640x640, 1024x768.
-det_model=scrfd_2.5g_gnkps
+det_model=${1:-scrfd_2.5g_gnkps}
 
 ## Maximum batch size for detection model
 det_batch_size=1
 
 # REC MODELS:
 ## None, arcface_r100_v1, glintr100, w600k_r50, w600k_mbf
-rec_model=w600k_r50
+rec_model=${2:-w600k_r50}
 
 ## Maximum batch size for recognition model (this value also applies for GA and mask detection models)
 rec_batch_size=1
