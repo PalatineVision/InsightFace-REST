@@ -4,13 +4,13 @@ from time import perf_counter
 
 
 class Benchmark:
-    def __init__(self, images_dir: str, repeat=100):
+    def __init__(self, images_dir: str, url='http://localhost:18081', repeat=100):
         '''
         images_dir - str path to dir test images
         '''
         self.images = list(Path(images_dir).iterdir())
         self.images_count = len(self.images)
-        self.url = "http://localhost:18082/multipart/draw_detections"
+        self.url = f"{url}/multipart/draw_detections"
         self.repeat = repeat
 
     def start(self):

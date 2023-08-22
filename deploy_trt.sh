@@ -92,7 +92,7 @@ echo "Containers port range: $START_PORT - $(($START_PORT + ($n_gpu) - 1))"
 
 device='"device='${3:-0}'"';
 port=$START_PORT;
-name=$IMAGE-gpu$i-trt;
+name=$IMAGE-gpu${3:-0}-trt;
 
 docker rm -f $name;
 echo --- Starting container $name  with $device  at port $port;
