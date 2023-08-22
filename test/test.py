@@ -37,15 +37,16 @@ MODE = [
     
 START_SCRIPT_PATH = '/home/ichernoglazov/InsightFace-REST'
 DEBUG_LAG=120
+DEPLOY_CPU_PORT=18081
 
-def start_container(det, rec, url, cpu=True, gpu=None):
+def start_container(det, rec, port, url, cpu=True, gpu=None):
     if cpu:
         subprocess.run(args=shlex.split(f'bash ./deploy_cpu.sh {det} {rec}'), cwd=START_SCRIPT_PATH)
     else:
         if gpu is None:
-            subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec}'), cwd=START_SCRIPT_PATH)
+            subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec} {port}'), cwd=START_SCRIPT_PATH)
         else:
-            subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec} {gpu}'), cwd=START_SCRIPT_PATH)
+            subprocess.run(args=shlex.split(f'bash ./deploy_trt.sh {det} {rec} {port} {gpu}'), cwd=START_SCRIPT_PATH)
     
     for i in range(10):
         try:
@@ -66,7 +67,7 @@ parser.add_argument('--save-file', type=str, required=True)
 parser.add_argument('--test-types', type=str, nargs='+', choices=TYPE_TEST, default=TYPE_TEST, help='Test types one billion dir for detection, detection + recognition and rec for recognition only')
 parser.add_argument('--det-models', type=str, nargs='+', choices=DET_MODEL, default=DET_MODEL)
 parser.add_argument('--rec-models', type=str, nargs='+', choices=REC_MODEL, default=REC_MODEL)
-parser.add_argument('--port', type=int, required=True)
+parser.add_argument('--port', type=int, required=True, help=f'If device cpu {DEPLOY_CPU_PORT}, if gpu try to start with port')
 parser.add_argument('--host', type=str, default='http://localhost')
 parser.add_argument('--mode', type=str, choices=MODE)
 parser.add_argument('-b', type=int, choices=[1, 64], default=1)
@@ -77,6 +78,7 @@ if args.gpu == -1:
     cpu = True
     gpu = None
     key_template = '{} {} {} {} {} cpu'
+    args.port = DEPLOY_CPU_PORT
 else:
     cpu = False
     gpu = args.gpu
@@ -84,6 +86,7 @@ else:
 
 test_types = set(args.test_types)
 det_models = set(args.det_models)
+rec_models = set(args.rec_models)
 try:
     result = json.load(open(args.save_file, 'rb'))
 except:
@@ -93,7 +96,6 @@ if args.mode == 'det':
     rec_models = set(['w600k_mbf'])
 elif args.mode == 'rec':
     # if detection test, choose the lightest det model 
-    rec_models = set(['w600k_mbf'])
     det_models = set(['scrfd_500m_bnkps'])
     test_types = set(['rec'])
 
@@ -101,11 +103,11 @@ for det in det_models:
     for rec in rec_models:
         
         if all([ key_template.format(args.mode, det, rec, t, f'batch={args.b}') in result for t in test_types]) and \
-                all([result[key_template.format(det, rec, t)] != "Fail to start container" 
+                all([result[key_template.format(args.mode, det, rec, t, f'batch={args.b}')] != "Fail to start container" 
                         for t in test_types]):
             continue
 
-        if not start_container(det, rec, INSIGHT_FACE, cpu, gpu):
+        if not start_container(det, rec, args.port, INSIGHT_FACE, cpu, gpu):
             for t in test_types:
                 key = key_template.format(args.mode, det, rec, t, f'batch={args.b}')
                 if not key in result:

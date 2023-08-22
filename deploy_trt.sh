@@ -4,10 +4,10 @@ IMAGE='insightface-rest'
 TAG='v0.8.3.0'
 
 # Change InsightFace-REST logging level (DEBUG,INFO,WARNING,ERROR)
-log_level=INFO
+log_level=DEBUG
 
 # When starting multiple containers this will be port assigned to first container
-START_PORT=18081
+START_PORT=${3:-18083}
 
 # Set number of GPU's availiable in your system
 n_gpu=1
@@ -90,9 +90,9 @@ echo "Starting $((n_gpu * n_workers)) workers on $n_gpu GPUs ($n_workers workers
 echo "Containers port range: $START_PORT - $(($START_PORT + ($n_gpu) - 1))"
 
 
-device='"device='${3:-0}'"';
+device='"device='${4:-0}'"';
 port=$START_PORT;
-name=$IMAGE-gpu${3:-0}-trt;
+name=$IMAGE-gpu${4:-0}-trt;
 
 docker rm -f $name;
 echo --- Starting container $name  with $device  at port $port;
