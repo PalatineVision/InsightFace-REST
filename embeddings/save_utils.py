@@ -53,6 +53,11 @@ def compute_megaface_result_path(file, root, rec_model):
     return str(outpath)
 
 
+def check_if_result_exist(file, root, rec_model):
+    result_path = Path(compute_megaface_result_path(file, root, rec_model))
+    return result_path.exists()
+
+
 def save_features(resp_faces, files, root, rec_model, dtype):
     for file, face in zip(files, resp_faces):
         feature = face['vec']

@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 sys.path.append('.')
 from demo_client import IFRClient, to_chunks, file2base64, to_bool
-from save_utils import save_features
+from save_utils import save_features, check_if_result_exist
 
 logging.basicConfig(
     level='INFO',
@@ -47,7 +47,8 @@ if __name__ == "__main__":
 
     allowed_ext = '.jpeg .jpg .bmp .png .webp .tiff'.split()
     files = (Path(args.megaface_root) / "data").rglob("*.*")
-    files = [str(file) for file in files if file.suffix.lower() in allowed_ext]
+    # if result exists not overwrite
+    files = [str(file) for file in files if file.suffix.lower() in allowed_ext and not check_if_result_exist(file, args.megaface_root, rec_model)]
     filepaths = copy.copy(files)
     print('Images will be sent in base64 encoding')
     mode = 'data'
