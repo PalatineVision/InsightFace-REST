@@ -32,7 +32,6 @@ REC_MODEL = [
 ]
 START_SCRIPT_PATH = '/home/ichernoglazov/InsightFace-REST'
 DEBUG_LAG=120
-PORT=18082
 
 def start_container(det, rec, url, cpu=True, gpu=None):
     if cpu:
@@ -62,9 +61,12 @@ parser.add_argument('--save-file', type=str, required=True)
 parser.add_argument('--test-types', type=str, nargs='+', choices=TYPE_TEST, default=TYPE_TEST)
 parser.add_argument('--det-models', type=str, nargs='+', choices=DET_MODEL, default=DET_MODEL)
 parser.add_argument('--rec-models', type=str, nargs='+', choices=REC_MODEL, default=REC_MODEL)
-parser.add_argument('--port', type=int, default=PORT)
+parser.add_argument('--port', type=int, required=True)
+parser.add_argument('--host', type=str, default='http://localhost')
+parser.add_argument('--det', action='store_true')
+
 args = parser.parse_args()
-INSIGHT_FACE = f'http://localhost:{args.port}'
+INSIGHT_FACE = f'{args.host}:{args.port}'
 if args.gpu == -1:
     cpu = True
     gpu = None
@@ -73,9 +75,13 @@ else:
     cpu = False
     gpu = args.gpu
     key_template = '{} {} {}'
+if args.det:
+    key_template = f'det {key_template}'
+
 test_types = set(args.test_types)
 det_models = set(args.det_models)
-rec_models = set(args.rec_models)
+# if detection test, choose the lightest rec model 
+rec_models = set(['w600k_mbf'] if args.det else args.rec_models)
 try:
     result = json.load(open(args.save_file, 'rb'))
 except:
@@ -105,7 +111,10 @@ for det in det_models:
                     continue
                 print(f'{key} result: {r}')
             print(f"Benchmark {key}")
-            result[key] = Benchmark(images_dir=t, url=INSIGHT_FACE).start()
+            if args.det:
+                result[key] = Benchmark(images_dir=t, host=args.host, port=args.port).start_det()
+            else:
+                result[key] = Benchmark(images_dir=t, host=args.host, port=args.port).start()
             json.dump(result, open(args.save_file, 'w'), indent=4)
         
         # time.sleep(DEBUG_LAG)
