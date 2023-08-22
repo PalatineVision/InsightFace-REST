@@ -31,10 +31,10 @@ REC_MODEL = [
 'glintr100',
 ]
 START_SCRIPT_PATH = '/home/ichernoglazov/InsightFace-REST'
-INSIGHT_FACE = 'http://localhost:18081'
 DEBUG_LAG=120
+PORT=18082
 
-def start_container(det, rec, cpu=True, gpu=None):
+def start_container(det, rec, url, cpu=True, gpu=None):
     if cpu:
         subprocess.run(args=shlex.split(f'bash ./deploy_cpu.sh {det} {rec}'), cwd=START_SCRIPT_PATH)
     else:
@@ -45,7 +45,7 @@ def start_container(det, rec, cpu=True, gpu=None):
     
     for i in range(10):
         try:
-            r = requests.get(f'{INSIGHT_FACE}/info')
+            r = requests.get(f'{url}/info')
             r.raise_for_status()
             print(r.json())
             print('Connected')
@@ -62,7 +62,9 @@ parser.add_argument('--save-file', type=str, required=True)
 parser.add_argument('--test-types', type=str, nargs='+', choices=TYPE_TEST, default=TYPE_TEST)
 parser.add_argument('--det-models', type=str, nargs='+', choices=DET_MODEL, default=DET_MODEL)
 parser.add_argument('--rec-models', type=str, nargs='+', choices=REC_MODEL, default=REC_MODEL)
+parser.add_argument('--port', type=int, default=PORT)
 args = parser.parse_args()
+INSIGHT_FACE = f'http://localhost:{args.port}'
 if args.gpu == -1:
     cpu = True
     gpu = None
@@ -87,9 +89,9 @@ for det in det_models:
                         for t in test_types]):
             continue
 
-        if not start_container(det, rec, cpu, gpu):
-            key = key_template.format(det, rec, t)
+        if not start_container(det, rec, INSIGHT_FACE, cpu, gpu):
             for t in test_types:
+                key = key_template.format(det, rec, t)
                 if not key in result:
                     result[key] = 'Fail to start container'
             json.dump(result, open(args.save_file, 'w'), indent=4)
@@ -103,7 +105,7 @@ for det in det_models:
                     continue
                 print(f'{key} result: {r}')
             print(f"Benchmark {key}")
-            result[key] = Benchmark(images_dir=t).start()
+            result[key] = Benchmark(images_dir=t, url=INSIGHT_FACE).start()
             json.dump(result, open(args.save_file, 'w'), indent=4)
         
         # time.sleep(DEBUG_LAG)
