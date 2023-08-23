@@ -43,14 +43,14 @@ force_fp16=False
 det_model=${1:-scrfd_10g_gnkps}
 
 ## Maximum batch size for detection model
-det_batch_size=1
+det_batch_size=64
 
 # REC MODELS:
 ## None, arcface_r100_v1, glintr100, w600k_r50, w600k_mbf
 rec_model=${2:-glintr100}
 
 ## Maximum batch size for recognition model (this value also applies for GA and mask detection models)
-rec_batch_size=1
+rec_batch_size=64
 
 
 # Mask detection models

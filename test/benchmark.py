@@ -26,7 +26,7 @@ class Benchmark:
         if det_rec_mode == 'det':
             kwargs['extract_embedding'] = False
         elif det_rec_mode == 'rec':
-            kwargs['embed_only'] = False
+            kwargs['embed_only'] = True
 
         client = IFRClient(self.host, self.port)
         files = glob.glob(os.path.join(self.images_dir, '*.*'))
