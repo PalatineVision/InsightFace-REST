@@ -28,7 +28,8 @@ if __name__ == "__main__":
     parser.add_argument('--embed', default='True', type=str, help='Extract embeddings, otherwise run detection only')
     parser.add_argument('--embed_only', default='False', type=str,
                         help='Omit detection step. Expects already cropped 112x112 images')
-    parser.add_argument('--megaface-root', required=True, type=str, help='Path to megaface dataset')
+    parser.add_argument('--dataset-root', required=True, type=str, help='Path to megaface dataset')
+    parser.add_argument('--dataset-type', type=str, choices=['megaface', 'lfw'], default='megaface')
     parser.add_argument('--dtype', required=True, type=str, choices=['float32', 'float64'], help='data type to save embeddings')
 
     args = parser.parse_args()
@@ -46,9 +47,13 @@ if __name__ == "__main__":
     print('---')
 
     allowed_ext = '.jpeg .jpg .bmp .png .webp .tiff'.split()
-    files = (Path(args.megaface_root) / "data").rglob("*.*")
+    if args.dataset_type == 'megaface':
+        files = (Path(args.dataset_root) / "data").rglob("*.*")
+    else:
+        files = (Path(args.dataset_root)).rglob("*.*")
+
     # if result exists not overwrite
-    files = [str(file) for file in files if file.suffix.lower() in allowed_ext and not check_if_result_exist(file, args.megaface_root, rec_model)]
+    files = [str(file) for file in files if file.suffix.lower() in allowed_ext and not check_if_result_exist(file, args.dataset_root, dataset_type=args.dataset_type, rec_model=rec_model)]
     filepaths = copy.copy(files)
     print('Images will be sent in base64 encoding')
     mode = 'data'
@@ -62,7 +67,7 @@ if __name__ == "__main__":
     _part_extract_vecs = partial(client.extract, extract_embedding=to_bool(args.embed),
                                  embed_only=to_bool(args.embed_only), mode=mode, return_face_data=True)
 
-    kwargs = dict(root=args.megaface_root, rec_model=rec_model, dtype=args.dtype)
+    kwargs = dict(root=args.dataset_root, dataset_type=args.dataset_type, rec_model=rec_model, dtype=args.dtype)
     for batch in tqdm(range(0, len(im_batches))):
         imgs = [im[0] for im in im_batches[batch]]
         filepaths = [im[1] for im in im_batches[batch]]
@@ -70,4 +75,10 @@ if __name__ == "__main__":
         if to_bool(args.embed_only):
             save_features(r['data'], filepaths, **kwargs)
         else:
-            save_features([resp['faces'][0] for resp in r['data']], filepaths, **kwargs)
+            outs = []
+            for resp, f in zip(r['data'], filepaths):
+                if resp['faces'] == []:
+                    outs.append(None)
+                else:
+                    outs.append(resp['faces'][0])
+            save_features(outs, filepaths, **kwargs)

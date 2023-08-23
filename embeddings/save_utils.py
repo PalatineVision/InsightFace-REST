@@ -52,13 +52,25 @@ def compute_megaface_result_path(file, root, rec_model):
     outpath.parent.mkdir(parents=True, exist_ok=True)
     return str(outpath)
 
+def compute_lfw_result_path(file, root, rec_model):
+    filepath = Path(file)
+    outpath = Path(root) / "embeddings" / filepath.parent.name / (filepath.name + f'_{rec_model}.bin')
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    return str(outpath)
 
-def check_if_result_exist(file, root, rec_model):
-    result_path = Path(compute_megaface_result_path(file, root, rec_model))
+def check_if_result_exist(file, root, dataset_type, rec_model):
+    if dataset_type == 'megaface':
+        result_path = Path(compute_megaface_result_path(file, root, rec_model))
+    elif dataset_type == 'lfw':
+        result_path = Path(compute_lfw_result_path(file, root, rec_model))
     return result_path.exists()
 
 
-def save_features(resp_faces, files, root, rec_model, dtype):
+def save_features(resp_faces, files, root, dataset_type, rec_model, dtype):
     for file, face in zip(files, resp_faces):
-        feature = face['vec']
-        write_bin(compute_megaface_result_path(file, root, rec_model), feature, dtype)
+        feature = [] if face is None else face['vec'] 
+        if dataset_type == 'megaface':
+            result_path = compute_megaface_result_path(file, root, rec_model)
+        elif dataset_type == 'lfw':
+            result_path = compute_lfw_result_path(file, root, rec_model)
+        write_bin(result_path, feature, dtype)
