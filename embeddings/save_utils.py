@@ -54,7 +54,7 @@ def compute_megaface_result_path(file, root, rec_model):
 
 def compute_lfw_result_path(file, root, rec_model):
     filepath = Path(file)
-    outpath = Path(root) / "embeddings" / filepath.parent.name / (filepath.name + f'_{rec_model}.bin')
+    outpath = Path(root) / "results" / filepath.parent.name / (filepath.name + f'_{rec_model}.bin')
     outpath.parent.mkdir(parents=True, exist_ok=True)
     return str(outpath)
 

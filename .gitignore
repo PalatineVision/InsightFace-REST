@@ -1,6 +1,6 @@
 .gitlab-ci.yml
 /idea
-/__pycache__
+**/__pycache__
 /images
 /src/Dockerfile.backup
 /src/Dockerfile.debug
