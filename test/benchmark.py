@@ -1,23 +1,25 @@
-from pathlib import Path
 from time import perf_counter
 import glob
 import os
-import sys; sys.path.append('..')
-from demo_client import IFRClient, file2base64, to_chunks
+import sys
+sys.path.append('..')
+import traceback
 from itertools import islice, cycle
+import json
 
-START_SCRIPT_PATH = '/home/ichernoglazov/InsightFace-REST'
+from demo_client import IFRClient, file2base64, to_chunks
+from alert import alert
 
 class Benchmark:
-    def __init__(self, images_dir: str, host='http://localhost', port=18081, repeat=100000):
+    def __init__(self, images_dir: str, host='http://localhost', port=18081, cpu=False, repeat=100000):
         '''
         images_dir - str path to dir test images
         '''
         self.images_dir = images_dir
         self.host = host
         self.port = port
-        self.draw_url = f"{host}:{port}/multipart/draw_detections"
         self.repeat = repeat
+        self.is_cpu = cpu
 
     def start(self, det_rec_mode, batch_size):
         # start test for detection
@@ -39,11 +41,27 @@ class Benchmark:
         total_time = []
         for idx, batch in enumerate(batches):
             print(f"Batch {idx + 1} of {len(batches)} length of batch {len(batch)}", end="\r")
-            start = perf_counter()
-            client.extract(data=batch, **kwargs)
-            request_time = perf_counter() - start
+            while True:
+                try:
+                    start = perf_counter()
+                    # throw if sess.post connection abort or ... if message in correct
+                    client.extract(data=batch, **kwargs)
+                    request_time = perf_counter() - start
+                    break
+                except Exception as e:
+                    # try again
+                    alert(test=f'{self.host}:{self.port}')
+                    alert(test=f'{det_rec_mode} b={batch_size} {" cpu" if self.is_cpu else ""}')
+                    alert(test=f'{json.dumps(client.server_info(show=False), indent=4)}')
+                    alert(test=''.join(repr(traceback.format_exception(e))))
+                    
             total_time.append(request_time)
-        return f"RPS: {self.repeat / sum(total_time)}"
-
-# bm = Benchmark()
-# print(bm.start())
+        
+        rps = f"RPS: {self.repeat / sum(total_time)}"
+        print(rps)
+        info = client.server_info()
+        alert(test=f'Finished\n{self.host}:{self.port}')
+        alert(test=f'{info["models"]["det_name"]} {info["models"]["rec_name"]} type: {self.images_dir} b={batch_size}{" cpu" if self.is_cpu else ""}')
+        alert(test=rps)
+        return rps
+    

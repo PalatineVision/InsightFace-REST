@@ -4,7 +4,7 @@ IMAGE='insightface-rest'
 TAG='v0.8.3.0'
 
 # Change InsightFace-REST logging level (DEBUG,INFO,WARNING,ERROR)
-log_level=DEBUG
+log_level=INFO
 
 # When starting multiple containers this will be port assigned to first container
 START_PORT=${3:-18083}

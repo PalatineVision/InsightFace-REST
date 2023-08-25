@@ -57,7 +57,7 @@ ga_model=None
 # request body.
 
 ## Return base64 encoded face crops.
-return_face_data=False
+return_face_data=True
 ## Get faces embeddings. Otherwise only bounding boxes will be returned.
 extract_embeddings=True
 ## Estimate gender/age

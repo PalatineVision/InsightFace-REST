@@ -1,6 +1,7 @@
 import argparse
 import base64
 import glob
+import json
 import logging
 import multiprocessing
 import os
@@ -9,6 +10,7 @@ import time
 from distutils import util
 from functools import partial
 from itertools import chain, islice, cycle
+from datetime import datetime as dt
 
 import msgpack
 import numpy as np
@@ -120,10 +122,20 @@ class IFRClient:
                    )
 
         resp = self.sess.post(extract_uri, json=req, timeout=120)
-        if resp.headers['content-type'] == 'application/x-msgpack':
-            content = msgpack.loads(resp.content)
-        else:
-            content = ujson.loads(resp.content)
+        try:
+            if resp.headers['content-type'] == 'application/x-msgpack':
+                content = msgpack.loads(resp.content)
+            else:
+                content = ujson.loads(resp.content)
+        except Exception as e:
+            timestamp = dt.now()
+            with open(f'dump_server_info_{timestamp}', 'w') as f:
+                f.write(json.dumps(dict(self.server_info(show=False)), indent=4))
+            with open(f'dump_response_{timestamp}', 'wb') as f:
+                f.write(resp.content)
+            with open(f'dump_{timestamp}', 'w') as f:
+                f.write(json.dumps(dict(resp.headers), indent=4))
+            raise
 
         images = content.get('data')
         for im in images:

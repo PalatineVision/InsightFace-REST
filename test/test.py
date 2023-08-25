@@ -4,6 +4,7 @@ import time
 import requests
 from benchmark import Benchmark
 import subprocess, shlex
+from pathlib import Path
 '''
 Result saved in file benchmarks.json if key not exist
 '''
@@ -35,7 +36,7 @@ MODE = [
 'rec'
 ]
     
-START_SCRIPT_PATH = '/home/ichernoglazov/InsightFace-REST'
+START_SCRIPT_PATH = str(Path(__file__).parent.parent)
 DEBUG_LAG=120
 DEPLOY_CPU_PORT=18081
 
@@ -73,7 +74,6 @@ parser.add_argument('--mode', type=str, choices=MODE)
 parser.add_argument('-b', type=int, choices=[1, 64], default=1)
 
 args = parser.parse_args()
-INSIGHT_FACE = f'{args.host}:{args.port}'
 if args.gpu == -1:
     cpu = True
     gpu = None
@@ -83,6 +83,7 @@ else:
     cpu = False
     gpu = args.gpu
     key_template = '{} {} {} {} {}'
+INSIGHT_FACE = f'{args.host}:{args.port}'
 
 test_types = set(args.test_types)
 det_models = set(args.det_models)
@@ -123,7 +124,7 @@ for det in det_models:
                     continue
                 print(f'{key} result: {r}')
             print(f"Benchmark {key}")
-            result[key] = Benchmark(images_dir=t, host=args.host, port=args.port).start(det_rec_mode=args.mode, batch_size=args.b)
+            result[key] = Benchmark(images_dir=t, host=args.host, port=args.port, cpu=cpu).start(det_rec_mode=args.mode, batch_size=args.b)
 
             json.dump(result, open(args.save_file, 'w'), indent=4)
         
